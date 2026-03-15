@@ -46,6 +46,11 @@ def get_user_by_phone(session: SessionDep, phone: str):
     return session.exec(statement).first()
 
 
+def get_user_by_email(session: SessionDep, email: str):
+    statement = select(User).where(User.email == email)
+    return session.exec(statement).first()
+
+
 def authenticate_user(session: SessionDep, phone: str, password: str):
     """Проверяет телефон и пароль пользователя"""
     user = get_user_by_phone(session, phone)
@@ -92,10 +97,17 @@ async def get_current_user(session: SessionDep, token: str = Depends(oauth2_sche
 @router.post("/registration")
 async def registration_user(user_data: CreateUser, session: SessionDep):
     """Регистрация нового пользователя. Ошибка, если такой телефон уже занят"""
-    existing_user = get_user_by_phone(session, user_data.phone)
-    if existing_user:
-        raise HTTPException(status_code=400, detail="User already exists")
-
+    existing_user_phone = get_user_by_phone(session, user_data.phone)
+    if existing_user_phone:
+        raise HTTPException(
+            status_code=400, detail="User with this phone already exists"
+        )
+    if user_data.email:
+        existing_user_email = get_user_by_email(session, user_data.email)
+        if existing_user_email:
+            raise HTTPException(
+                status_code=400, detail="User with this email already exists"
+            )
     user = User(
         username=user_data.username,
         phone=user_data.phone,
