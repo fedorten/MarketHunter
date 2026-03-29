@@ -36,3 +36,9 @@ async def patch_user(
     session.commit()
     session.refresh(user)
     return user
+
+
+@router.get("/me/favorites")
+def favorites(session: SessionDep, current_user=Depends(get_current_user)):
+    user = session.get(User, current_user.id)
+    return user.liked_adverts

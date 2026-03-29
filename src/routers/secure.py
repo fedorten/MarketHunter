@@ -65,7 +65,9 @@ def authenticate_user(session: SessionDep, phone: str, password: str):
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     """Создаёт JWT токен на основе данных и времени жизни"""
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=15))
+    expire = datetime.now(timezone.utc) + (
+        expires_delta or timedelta(minutes=60 * 24 * 30)
+    )
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -137,7 +139,7 @@ async def login_for_access_token(
             detail="Incorrect phone or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token_expires = timedelta(minutes=30)
+    access_token_expires = timedelta(minutes=60 * 24 * 30)
     access_token = create_access_token(
         data={"sub": user.phone}, expires_delta=access_token_expires
     )

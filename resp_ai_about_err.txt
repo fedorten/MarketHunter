@@ -1,0 +1,142 @@
+Эта ошибка связана с несколькими проблемами. Вот пошаговое решение:
+
+## Проблемы:
+1. **Права доступа (EPERM)** - Node.js не может удалить папку
+2. **OneDrive синхронизация** - папка синхронизируется с облаком
+3. **Сетевая ошибка** - проблемы с npm registry
+
+## Решение:
+
+### 1. **Закройте все программы, которые могут блокировать файлы:**
+- VS Code / IDE
+- Терминалы
+- Проводник Windows (если открыта папка)
+- OneDrive (временно приостановите синхронизацию)
+
+### 2. **Временно отключите OneDrive для этой папки:**
+
+```powershell
+# Приостановить синхронизацию OneDrive на 2 часа
+# Нажмите на иконку OneDrive в трее -> "Приостановить синхронизацию" -> "2 часа"
+```
+
+### 3. **Удалите папку node_modules вручную:**
+
+```powershell
+# Перейдите в папку frontend
+cd C:\Users\sdmda\OneDrive\Desktop\SorokinDanil\API_projects\Marketplace\frontend
+
+# Удалить node_modules (если не удаляется, используйте принудительное удаление)
+rm -r -force node_modules
+
+# Или используйте команду:
+Remove-Item -Path "node_modules" -Recurse -Force
+```
+
+Если не удаляется:
+```powershell
+# Закройте все программы и попробуйте снова
+# Или используйте простой способ - переименуйте папку
+ren node_modules node_modules_delete
+# Затем перезагрузите компьютер и удалите переименованную папку
+```
+
+### 4. **Очистите кэш npm:**
+
+```powershell
+npm cache clean --force
+```
+
+### 5. **Настройте npm для работы без OneDrive:**
+
+```powershell
+# Проверьте текущие настройки npm
+npm config list
+
+# Если проблемы с правами, измените глобальную папку npm (опционально)
+npm config set prefix C:\Users\sdmda\AppData\Roaming\npm
+```
+
+### 6. **Создайте проект в другом месте (рекомендуется):**
+
+OneDrive часто вызывает проблемы с node_modules. Лучше создать проект вне OneDrive:
+
+```powershell
+# Перейдите в другую папку (например, на диск C:)
+cd C:\Users\sdmda\Desktop
+
+# Или создайте папку для проектов вне OneDrive
+mkdir C:\Projects
+cd C:\Projects
+
+# Теперь создайте Vite проект
+npm create vite@latest marketplace-frontend -- --template react
+# или
+npm create vite@latest marketplace-frontend -- --template vue
+```
+
+### 7. **Если проблема с сетью (proxy):**
+
+```powershell
+# Проверьте настройки прокси
+npm config get proxy
+npm config get https-proxy
+
+# Если прокси не нужен, удалите настройки
+npm config delete proxy
+npm config delete https-proxy
+
+# Используйте другой registry (опционально)
+npm config set registry https://registry.npmjs.org/
+```
+
+### 8. **Альтернативный способ - использовать yarn или pnpm:**
+
+```powershell
+# Установить yarn
+npm install -g yarn
+
+# Создать проект через yarn
+yarn create vite frontend --template react
+
+# Или pnpm
+npm install -g pnpm
+pnpm create vite frontend --template react
+```
+
+### 9. **Полный сброс (если ничего не помогает):**
+
+```powershell
+# 1. Закройте все программы
+# 2. Перезагрузите компьютер
+# 3. После перезагрузки, приостановите OneDrive
+# 4. Откройте CMD от имени администратора
+# 5. Выполните:
+
+cd C:\Users\sdmda\Desktop
+npm create vite@latest my-app -- --template react
+```
+
+## Рекомендация:
+
+**Лучшее решение** - создать проект вне папки OneDrive, так как OneDrive постоянно синхронизирует файлы и блокирует их, что вызывает проблемы с npm.
+
+```powershell
+# Создайте папку для проектов вне OneDrive
+mkdir C:\Projects
+cd C:\Projects
+
+# Создайте проект
+npm create vite@latest marketplace-frontend -- --template react
+
+# Перейдите в проект
+cd marketplace-frontend
+
+# Установите зависимости
+npm install
+
+# Запустите проект
+npm run dev
+```
+
+После этого проект будет работать без проблем с правами доступа и синхронизацией OneDrive.

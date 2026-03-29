@@ -1,5 +1,11 @@
-from sqlmodel import SQLModel, Field, Relationship
+from sqlmodel import SQLModel, Field, Relationship, UniqueConstraint
 from datetime import datetime
+
+
+class Like(SQLModel, table=True):
+    user_id: int = Field(foreign_key="user.id", primary_key=True)
+    advert_id: int = Field(foreign_key="advert.id", primary_key=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 # ---------------- USER ----------------
@@ -20,6 +26,10 @@ class User(SQLModel, table=True):
 
     # отправленные сообщения
     sent_messages: list["Message"] = Relationship(back_populates="sender")
+    # понравившееся
+    liked_adverts: list["Advert"] = Relationship(
+        back_populates="liked_by", link_model=Like
+    )
 
 
 # ---------------- ADVERT ----------------
@@ -33,16 +43,21 @@ class Advert(SQLModel, table=True):
     category: str | None = None
     images_paths: str | None = None
     location: str | None = None
+    views: int = 0
+    likes: int = 0
 
     owner_id: int = Field(foreign_key="user.id")
     owner: User = Relationship(back_populates="adverts")
-
     # все чаты по объявлению
     chats: list["Chat"] = Relationship(back_populates="advert")
+    liked_by: list["User"] = Relationship(
+        back_populates="liked_adverts", link_model=Like
+    )
 
 
 # ---------------- CHAT ----------------
 class Chat(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("advert_id", "buyer_id", name="unique_chat"),)
     id: int | None = Field(default=None, primary_key=True)
 
     advert_id: int = Field(foreign_key="advert.id")

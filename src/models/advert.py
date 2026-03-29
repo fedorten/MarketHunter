@@ -1,4 +1,5 @@
 from sqlmodel import SQLModel
+from pydantic import ConfigDict
 
 
 class CreateAdvert(SQLModel):
@@ -21,9 +22,11 @@ class PublicAdvert(SQLModel):
 
 
 class PatchAdvert(SQLModel):
-    title: str | None
-    price: int | None
-    description: str | None
-    category: str | None
-    images_paths: str | None
-    location: str | None
+    model_config = ConfigDict(extra='forbid')
+    
+    title: str | None = None
+    price: int | None = None
+    description: str | None = None
+    category: str | None = None
+    images_paths: str | None = None
+    location: str | None = None

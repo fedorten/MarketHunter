@@ -1,4 +1,5 @@
 from sqlmodel import SQLModel
+from pydantic import ConfigDict
 
 
 class PublicUser(SQLModel):
@@ -15,6 +16,8 @@ class CreateUser(SQLModel):
 
 
 class PatchUser(SQLModel):
-    username: str | None
-    password: str | None
-    email: str | None
+    model_config = ConfigDict(extra='forbid')
+    
+    username: str | None = None
+    password: str | None = None
+    email: str | None = None
