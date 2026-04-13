@@ -9,6 +9,5 @@ import { Home, SlidersHorizontal, ShoppingCart } from 'lucide-vue-next'
       <input type="text" placeholder="Поиск" class="search-input" />
       <SlidersHorizontal :size="24" />
     </div>
-    <ShoppingCart :size="24" />
   </div>
 </template>
