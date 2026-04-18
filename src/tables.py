@@ -1,4 +1,5 @@
 from sqlmodel import SQLModel, Field, Relationship, UniqueConstraint
+from sqlalchemy import Column, JSON
 from datetime import datetime
 
 
@@ -37,12 +38,12 @@ class Advert(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     create_date: datetime = Field(default_factory=datetime.utcnow)
 
-    title: str
-    price: int
+    title: str = Field(index=True)
+    price: int = Field(index=True)
     description: str | None = None
-    category: str | None = None
-    images_paths: str | None = None
-    location: str | None = None
+    category: str | None = Field(default=None, index=True)
+    images_paths: list[str] = Field(default_factory=list, sa_column=Column(JSON))
+    location: str | None = Field(default=None, index=True)
     views: int = 0
     likes: int = 0
 

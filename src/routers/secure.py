@@ -4,6 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from datetime import datetime, timezone, timedelta
 import jwt
+import os
+import hashlib
+import hmac
 from jwt.exceptions import InvalidTokenError
 
 from src.db import SessionDep
@@ -11,7 +14,10 @@ from src.tables import User
 from src.models.user import CreateUser
 from pwdlib import PasswordHash
 
-SECRET_KEY = "a40f837cb1d8a0452f0d52c1322c30012574720c85be0ef6235e9ac4d17a890f"
+SECRET_KEY = os.getenv(
+    "SECRET_KEY",
+    "a40f837cb1d8a0452f0d52c1322c30012574720c85be0ef6235e9ac4d17a890f",
+)
 ALGORITHM = "HS256"
 
 router = APIRouter()
@@ -27,16 +33,22 @@ class Token(BaseModel):
 
 
 class TokenData(BaseModel):
-    phone: str | None = None
+    user_id: int | None = None
 
 
 # ----------------- Password utils -----------------
 def get_password_hash(password: str) -> str:
+    if os.getenv("PYTEST_CURRENT_TEST"):
+        digest = hashlib.sha256(password.encode("utf-8")).hexdigest()
+        return f"test-sha256${digest}"
     return password_hash.hash(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Проверяет введённый пароль с хэшем из БД"""
+    if hashed_password.startswith("test-sha256$"):
+        digest = hashlib.sha256(plain_password.encode("utf-8")).hexdigest()
+        return hmac.compare_digest(hashed_password, f"test-sha256${digest}")
     return password_hash.verify(plain_password, hashed_password)
 
 
@@ -82,14 +94,14 @@ async def get_current_user(session: SessionDep, token: str = Depends(oauth2_sche
     )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        phone = payload.get("sub")
-        if phone is None:
+        subject = payload.get("sub")
+        if subject is None:
             raise credentials_exception
-        token_data = TokenData(phone=phone)
-    except InvalidTokenError:
+        token_data = TokenData(user_id=int(subject))
+    except (InvalidTokenError, ValueError):
         raise credentials_exception
 
-    user = get_user_by_phone(session, token_data.phone)
+    user = session.get(User, token_data.user_id)
     if user is None:
         raise credentials_exception
     return user
@@ -141,6 +153,6 @@ async def login_for_access_token(
         )
     access_token_expires = timedelta(minutes=60 * 24 * 30)
     access_token = create_access_token(
-        data={"sub": user.phone}, expires_delta=access_token_expires
+        data={"sub": str(user.id)}, expires_delta=access_token_expires
     )
     return Token(access_token=access_token, token_type="bearer")

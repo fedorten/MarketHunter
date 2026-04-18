@@ -1,9 +1,9 @@
 from fastapi import WebSocket, APIRouter, WebSocketDisconnect, Depends, HTTPException
 from src.db import SessionDep
 from src.tables import Chat, Message, User, Advert
-from src.routers.secure import get_current_user
+from src.routers.secure import SECRET_KEY, ALGORITHM, get_current_user
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import select
+from sqlalchemy import or_, select
 import jwt
 
 
@@ -42,6 +42,45 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
+def serialize_message(message: Message):
+    return {
+        "id": message.id,
+        "chat_id": message.chat_id,
+        "sender_id": message.sender_id,
+        "content": message.content,
+        "is_read": message.is_read,
+        "create_date": message.create_date,
+    }
+
+
+def serialize_chat(chat: Chat, current_user_id: int):
+    messages = sorted(chat.messages, key=lambda item: item.create_date)
+    last_message = messages[-1] if messages else None
+    seller = chat.advert.owner
+    companion = chat.buyer if current_user_id == seller.id else seller
+    return {
+        "id": chat.id,
+        "advert_id": chat.advert_id,
+        "advert_title": chat.advert.title,
+        "advert_price": chat.advert.price,
+        "advert_image": chat.advert.images_paths[0] if chat.advert.images_paths else None,
+        "buyer_id": chat.buyer_id,
+        "seller_id": seller.id,
+        "companion": {
+            "id": companion.id,
+            "username": companion.username,
+        },
+        "last_message": serialize_message(last_message) if last_message else None,
+        "unread_count": len(
+            [
+                message
+                for message in messages
+                if message.sender_id != current_user_id and not message.is_read
+            ]
+        ),
+    }
+
+
 @router.post("/{advert_id}")
 async def create_chat(
     advert_id: int, session: SessionDep, current_user: User = Depends(get_current_user)
@@ -67,6 +106,88 @@ async def create_chat(
         return {"chat_id": existing_chat.id, "is_new": False}
 
 
+@router.get("/")
+async def read_chats(
+    session: SessionDep, current_user: User = Depends(get_current_user)
+):
+    statement = (
+        select(Chat)
+        .join(Advert)
+        .where(or_(Chat.buyer_id == current_user.id, Advert.owner_id == current_user.id))
+    )
+    chats = session.exec(statement).all()
+    chats = sorted(
+        chats,
+        key=lambda chat: max(
+            [message.create_date for message in chat.messages],
+            default=chat.advert.create_date,
+        ),
+        reverse=True,
+    )
+    return [serialize_chat(chat, current_user.id) for chat in chats]
+
+
+@router.get("/{chat_id}")
+async def read_chat(
+    chat_id: int, session: SessionDep, current_user: User = Depends(get_current_user)
+):
+    chat = session.get(Chat, chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="chat not found")
+    if current_user.id not in [chat.buyer_id, chat.advert.owner_id]:
+        raise HTTPException(status_code=403, detail="chat is not available")
+    return serialize_chat(chat, current_user.id)
+
+
+@router.get("/{chat_id}/messages")
+async def read_messages(
+    chat_id: int,
+    session: SessionDep,
+    current_user: User = Depends(get_current_user),
+    page: int = 1,
+    per_page: int = 50,
+):
+    chat = session.get(Chat, chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="chat not found")
+    if current_user.id not in [chat.buyer_id, chat.advert.owner_id]:
+        raise HTTPException(status_code=403, detail="chat is not available")
+
+    page = max(page, 1)
+    per_page = min(max(per_page, 1), 100)
+    statement = (
+        select(Message)
+        .where(Message.chat_id == chat_id)
+        .order_by(Message.create_date)
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+    )
+    return [serialize_message(message) for message in session.exec(statement).all()]
+
+
+@router.patch("/{chat_id}/read")
+async def mark_messages_read(
+    chat_id: int, session: SessionDep, current_user: User = Depends(get_current_user)
+):
+    chat = session.get(Chat, chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="chat not found")
+    if current_user.id not in [chat.buyer_id, chat.advert.owner_id]:
+        raise HTTPException(status_code=403, detail="chat is not available")
+
+    statement = select(Message).where(
+        Message.chat_id == chat_id,
+        Message.sender_id != current_user.id,
+        Message.is_read == False,
+    )
+    messages = session.exec(statement).all()
+    for message in messages:
+        message.is_read = True
+        session.add(message)
+    session.commit()
+    return {"updated": len(messages)}
+
+
 # <-- добавил отдельную функцию для auth в websocket
 async def get_user_ws(websocket: WebSocket, session: SessionDep):
     token = websocket.query_params.get("token")
@@ -77,15 +198,19 @@ async def get_user_ws(websocket: WebSocket, session: SessionDep):
     try:
         payload = jwt.decode(
             token,
-            "a40f837cb1d8a0452f0d52c1322c30012574720c85be0ef6235e9ac4d17a890f",
-            algorithms=["HS256"],
+            SECRET_KEY,
+            algorithms=[ALGORITHM],
         )
         user_id = payload.get("sub")
-    except:
+    except Exception:
         await websocket.close()
         return None
 
-    user = session.get(User, user_id)
+    try:
+        user = session.get(User, int(user_id))
+    except (TypeError, ValueError):
+        await websocket.close()
+        return None
     if not user:
         await websocket.close()
         return None

@@ -1,22 +1,23 @@
 {
-  "name": "frontend",
+  "name": "krug-marketplace",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
-    "lucide-vue-next": "^1.0.0",
-    "vue": "^3.5.30"
+    "@vitejs/plugin-react": "^5.0.0",
+    "lucide-react": "^0.555.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.12"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^5.0.0",
-    "prettier": "^3.8.2",
-    "vite": "^5.4.0"
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3"
   }
 }

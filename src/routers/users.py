@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordBearer
 
 from src.db import SessionDep
 from src.tables import User
-from src.routers.secure import get_current_user
+from src.routers.secure import get_current_user, get_password_hash
 from src.models.user import PatchUser, PublicUser
 
 router = APIRouter(prefix="/api/v1/users")
@@ -31,6 +31,8 @@ async def patch_user(
     if not user:
         raise HTTPException(status_code=404, detail="user not found")
     user_data = new_user_data.model_dump(exclude_unset=True)
+    if "password" in user_data:
+        user_data["password"] = get_password_hash(user_data["password"])
     user.sqlmodel_update(user_data)
     session.add(user)
     session.commit()
