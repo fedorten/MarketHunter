@@ -1,7 +1,7 @@
 type Props = {
-  title: string
-  text: string
-}
+  title: string;
+  text: string;
+};
 
 export function EmptyState({ title, text }: Props) {
   return (
@@ -9,5 +9,5 @@ export function EmptyState({ title, text }: Props) {
       <h2>{title}</h2>
       <p>{text}</p>
     </div>
-  )
+  );
 }
