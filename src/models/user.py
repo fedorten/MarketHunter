@@ -3,6 +3,7 @@ from pydantic import ConfigDict
 
 
 class PublicUser(SQLModel):
+    id: int
     username: str
     phone: str
     email: str | None
