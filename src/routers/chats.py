@@ -63,7 +63,9 @@ def serialize_chat(chat: Chat, current_user_id: int):
         "advert_id": chat.advert_id,
         "advert_title": chat.advert.title,
         "advert_price": chat.advert.price,
-        "advert_image": chat.advert.images_paths[0] if chat.advert.images_paths else None,
+        "advert_image": chat.advert.images_paths[0]
+        if chat.advert.images_paths
+        else None,
         "buyer_id": chat.buyer_id,
         "seller_id": seller.id,
         "companion": {
@@ -113,7 +115,9 @@ async def read_chats(
     statement = (
         select(Chat)
         .join(Advert)
-        .where(or_(Chat.buyer_id == current_user.id, Advert.owner_id == current_user.id))
+        .where(
+            or_(Chat.buyer_id == current_user.id, Advert.owner_id == current_user.id)
+        )
     )
     chats = session.exec(statement).all()
     chats = sorted(
