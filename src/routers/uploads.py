@@ -9,7 +9,7 @@ from src.tables import User
 
 router = APIRouter(prefix="/api/v1/uploads")
 
-UPLOAD_DIR = Path("uploads")
+UPLOAD_DIR = Path(__file__).resolve().parents[2] / "uploads"
 ALLOWED_IMAGE_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
 

@@ -31,8 +31,9 @@ app.include_router(adverst.router, tags=["advers"])
 app.include_router(secure.router, tags=["secure"])
 app.include_router(chats.router, tags=["chats"])
 app.include_router(uploads.router, tags=["uploads"])
-Path("uploads").mkdir(exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+uploads_dir = Path(__file__).resolve().parent.parent / "uploads"
+uploads_dir.mkdir(exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 create_admin_page(app)
 
 frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"

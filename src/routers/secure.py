@@ -1,8 +1,9 @@
 from sqlmodel import select
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from datetime import datetime, timezone, timedelta
+from urllib.parse import parse_qs
 import jwt
 import os
 import hashlib
@@ -138,13 +139,22 @@ async def registration_user(user_data: CreateUser, session: SessionDep):
 @router.post("/login", response_model=Token)
 async def login_for_access_token(
     session: SessionDep,
-    form_data: OAuth2PasswordRequestForm = Depends(),
+    request: Request,
 ):
     """Создание токена на основе формы для существующего пользователя. Иначе ошибка"""
-    # form_data.username фактически phone
-    user = authenticate_user(
-        session, phone=form_data.username, password=form_data.password
-    )
+    content_type = request.headers.get("content-type", "")
+    if content_type.startswith("application/json"):
+        payload = await request.json()
+        username = str(payload.get("username") or payload.get("phone") or "")
+        password = str(payload.get("password") or "")
+    else:
+        body = (await request.body()).decode("utf-8")
+        payload = parse_qs(body)
+        username = payload.get("username", [""])[0]
+        password = payload.get("password", [""])[0]
+
+    # username фактически phone
+    user = authenticate_user(session, phone=username.strip(), password=password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

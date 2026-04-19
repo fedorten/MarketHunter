@@ -25,6 +25,7 @@ export function FeedPage({ onOpenAdvert }: Props) {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const markerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -36,13 +37,20 @@ export function FeedPage({ onOpenAdvert }: Props) {
   useEffect(() => {
     let ignore = false;
     setLoading(true);
+    setError("");
     getAdverts(applied, page)
       .then((data) => {
         if (ignore) return;
         setItems((current) => (page === 1 ? data : [...current, ...data]));
         setHasMore(data.length >= 18);
       })
-      .catch(() => setHasMore(false))
+      .catch((err) => {
+        if (ignore) return;
+        setHasMore(false);
+        setError(
+          err instanceof Error ? err.message : "Не удалось загрузить объявления",
+        );
+      })
       .finally(() => !ignore && setLoading(false));
     return () => {
       ignore = true;
@@ -84,7 +92,9 @@ export function FeedPage({ onOpenAdvert }: Props) {
           Лента подстраивается под поиск и спокойно догружает объявления дальше.
         </p>
       </section>
-      {items.length === 0 && !loading ? (
+      {error ? (
+        <EmptyState title="Не удалось загрузить объявления" text={error} />
+      ) : items.length === 0 && !loading ? (
         <EmptyState
           title="Ничего не найдено"
           text="Попробуйте другой запрос или уберите часть фильтров."

@@ -23,15 +23,17 @@ export function AuthPage({ onLogin }: Props) {
     event.preventDefault();
     setError("");
     try {
+      const phone = form.phone.trim();
+      const username = form.username.trim();
       if (isRegister) {
         await register({
-          username: form.username,
-          phone: form.phone,
+          username,
+          phone,
           password: form.password,
           email: form.email.trim() || undefined,
         });
       }
-      await login(form.phone, form.password);
+      await login(phone, form.password);
       onLogin();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не получилось войти");

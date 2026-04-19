@@ -3,7 +3,7 @@ import type { User } from "../types/domain";
 
 export async function login(phone: string, password: string) {
   const body = new URLSearchParams();
-  body.set("username", phone);
+  body.set("username", phone.trim());
   body.set("password", password);
 
   const result = await api<{ access_token: string }>("/login", {
@@ -23,7 +23,12 @@ export function register(payload: {
 }) {
   return api<{ msg: string }>("/registration", {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      ...payload,
+      username: payload.username.trim(),
+      phone: payload.phone.trim(),
+      email: payload.email?.trim() || undefined,
+    }),
   });
 }
 

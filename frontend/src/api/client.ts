@@ -19,6 +19,28 @@ export function mediaUrl(path?: string | null) {
   return `${API_URL}${path}`;
 }
 
+function getErrorMessage(payload: unknown) {
+  if (
+    payload &&
+    typeof payload === "object" &&
+    "detail" in payload
+  ) {
+    const detail = (payload as { detail?: unknown }).detail;
+    if (typeof detail === "string") return detail;
+    if (Array.isArray(detail)) {
+      return detail
+        .map((item) => {
+          if (item && typeof item === "object" && "msg" in item) {
+            return String((item as { msg: unknown }).msg);
+          }
+          return String(item);
+        })
+        .join(", ");
+    }
+  }
+  return "Ошибка запроса";
+}
+
 export async function api<T>(
   path: string,
   options: RequestInit = {},
@@ -33,8 +55,8 @@ export async function api<T>(
 
   const response = await fetch(`${API_URL}${path}`, { ...options, headers });
   if (!response.ok) {
-    const payload = await response.json().catch(() => ({}));
-    throw new Error(payload.detail ?? "Ошибка запроса");
+    const payload = await response.json().catch(() => null);
+    throw new Error(getErrorMessage(payload));
   }
   return response.json();
 }
