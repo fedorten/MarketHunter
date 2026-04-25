@@ -1,7 +1,3 @@
-import pytest
-from fastapi.testclient import TestClient
-
-
 class TestRegistration:
     def test_register_new_user(self, client):
         response = client.post(

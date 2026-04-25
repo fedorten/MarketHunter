@@ -1,6 +1,6 @@
 import { ArrowLeft, Send } from "lucide-react";
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { getMessages, markRead, openChatSocket } from "../api/chats";
+import { getMessages, markRead, openChatSocket, sendMessage } from "../api/chats";
 import type { Message, User } from "../types/domain";
 
 type Props = {
@@ -12,24 +12,49 @@ type Props = {
 export function ChatPage({ chatId, user, onBack }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState("");
+  const [status, setStatus] = useState("Подключаемся...");
+  const [error, setError] = useState("");
   const socketRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    getMessages(chatId).then(setMessages);
+    setError("");
+    setStatus("Подключаемся...");
+    getMessages(chatId).then(setMessages).catch((err) => {
+      setError(err instanceof Error ? err.message : "Не удалось загрузить сообщения");
+    });
     markRead(chatId).catch(() => undefined);
     const socket = openChatSocket(chatId);
     socketRef.current = socket;
+    socket.onopen = () => setStatus("");
     socket.onmessage = (event) => {
       setMessages((current) => [...current, JSON.parse(event.data)]);
     };
-    return () => socket.close();
+    socket.onerror = () => setError("Соединение с чатом не установлено");
+    socket.onclose = () => setStatus("Соединение закрыто");
+    return () => {
+      socketRef.current = null;
+      socket.close();
+    };
   }, [chatId]);
 
-  const send = (event: FormEvent) => {
+  const send = async (event: FormEvent) => {
     event.preventDefault();
-    if (!text.trim()) return;
-    socketRef.current?.send(text.trim());
-    setText("");
+    const content = text.trim();
+    if (!content) return;
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      setError("");
+      socketRef.current.send(content);
+      setText("");
+      return;
+    }
+    try {
+      const saved = await sendMessage(chatId, content);
+      setMessages((current) => [...current, saved]);
+      setError("");
+      setText("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось отправить сообщение");
+    }
   };
 
   return (
@@ -48,6 +73,8 @@ export function ChatPage({ chatId, user, onBack }: Props) {
             {message.content}
           </div>
         ))}
+        {status && <div className="muted-text">{status}</div>}
+        {error && <div className="error-text">{error}</div>}
       </div>
       <form className="message-form" onSubmit={send}>
         <input

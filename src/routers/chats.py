@@ -3,7 +3,9 @@ from src.db import SessionDep
 from src.tables import Chat, Message, User, Advert
 from src.routers.secure import SECRET_KEY, ALGORITHM, get_current_user
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import or_, select
+from sqlalchemy import or_
+from sqlmodel import select
+from pydantic import BaseModel
 import jwt
 
 
@@ -42,6 +44,10 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
+class SendMessage(BaseModel):
+    content: str
+
+
 def serialize_message(message: Message):
     return {
         "id": message.id,
@@ -49,7 +55,7 @@ def serialize_message(message: Message):
         "sender_id": message.sender_id,
         "content": message.content,
         "is_read": message.is_read,
-        "create_date": message.create_date,
+        "create_date": message.create_date.isoformat(),
     }
 
 
@@ -169,6 +175,32 @@ async def read_messages(
     return [serialize_message(message) for message in session.exec(statement).all()]
 
 
+@router.post("/{chat_id}/messages")
+async def send_message(
+    chat_id: int,
+    payload: SendMessage,
+    session: SessionDep,
+    current_user: User = Depends(get_current_user),
+):
+    chat = session.get(Chat, chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="chat not found")
+    if current_user.id not in [chat.buyer_id, chat.advert.owner_id]:
+        raise HTTPException(status_code=403, detail="chat is not available")
+
+    content = payload.content.strip()
+    if not content:
+        raise HTTPException(status_code=400, detail="message is empty")
+
+    message = Message(chat_id=chat_id, sender_id=current_user.id, content=content)
+    session.add(message)
+    session.commit()
+    session.refresh(message)
+    serialized = serialize_message(message)
+    await manager.broadcast(chat_id, serialized)
+    return serialized
+
+
 @router.patch("/{chat_id}/read")
 async def mark_messages_read(
     chat_id: int, session: SessionDep, current_user: User = Depends(get_current_user)
@@ -246,11 +278,14 @@ async def websocket_life(
     try:
         while True:
             data = await websocket.receive_text()
-            msg = Message(chat_id=chat_id, sender_id=current_user.id, content=data)
+            content = data.strip()
+            if not content:
+                continue
+            msg = Message(chat_id=chat_id, sender_id=current_user.id, content=content)
             session.add(msg)
             session.commit()
             session.refresh(msg)
 
-            await manager.broadcast(chat_id, msg.model_dump(mode="json"))
+            await manager.broadcast(chat_id, serialize_message(msg))
     except WebSocketDisconnect:
         manager.disconnect(chat_id, websocket)

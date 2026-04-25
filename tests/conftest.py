@@ -1,9 +1,14 @@
+import os
+import asyncio
+
+os.environ.setdefault("TESTING", "1")
+
 import pytest
-from fastapi.testclient import TestClient
+import httpx
 from sqlmodel import SQLModel, create_engine, Session
 from src.main import app
 from src.db import get_session
-from src.tables import User, Advert, Chat, Message
+from src.tables import User, Advert
 from src.routers.secure import get_password_hash
 
 
@@ -11,12 +16,39 @@ TEST_DATABASE_URL = "sqlite:///./test.db"
 test_engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
 
 
-def override_get_session():
+async def override_get_session():
     with Session(test_engine) as session:
         yield session
 
 
 app.dependency_overrides[get_session] = override_get_session
+
+
+class ASGITestClient:
+    def __init__(self, app):
+        self.app = app
+
+    def request(self, method: str, url: str, **kwargs):
+        async def run_request():
+            transport = httpx.ASGITransport(app=self.app)
+            async with httpx.AsyncClient(
+                transport=transport, base_url="http://testserver"
+            ) as client:
+                return await client.request(method, url, **kwargs)
+
+        return asyncio.run(run_request())
+
+    def get(self, url: str, **kwargs):
+        return self.request("GET", url, **kwargs)
+
+    def post(self, url: str, **kwargs):
+        return self.request("POST", url, **kwargs)
+
+    def patch(self, url: str, **kwargs):
+        return self.request("PATCH", url, **kwargs)
+
+    def delete(self, url: str, **kwargs):
+        return self.request("DELETE", url, **kwargs)
 
 
 @pytest.fixture(scope="function")
@@ -30,7 +62,7 @@ def db_session():
 
 @pytest.fixture(scope="function")
 def client(db_session):
-    return TestClient(app)
+    return ASGITestClient(app)
 
 
 @pytest.fixture

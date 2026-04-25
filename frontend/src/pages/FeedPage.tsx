@@ -24,15 +24,16 @@ export function FeedPage({ onOpenAdvert }: Props) {
   const [items, setItems] = useState<Advert[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const markerRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    setItems([]);
+  const applyFilters = () => {
     setPage(1);
+    setItems([]);
     setHasMore(true);
-  }, [applied]);
+    setApplied({ ...filters });
+  };
 
   useEffect(() => {
     let ignore = false;
@@ -48,7 +49,9 @@ export function FeedPage({ onOpenAdvert }: Props) {
         if (ignore) return;
         setHasMore(false);
         setError(
-          err instanceof Error ? err.message : "Не удалось загрузить объявления",
+          err instanceof Error
+            ? err.message
+            : "Не удалось загрузить объявления",
         );
       })
       .finally(() => !ignore && setLoading(false));
@@ -84,7 +87,7 @@ export function FeedPage({ onOpenAdvert }: Props) {
       <SearchFilters
         filters={filters}
         onChange={setFilters}
-        onSubmit={() => setApplied(filters)}
+        onSubmit={applyFilters}
       />
       <section className="section-head">
         <h1>Вещи рядом</h1>

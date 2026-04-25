@@ -10,10 +10,11 @@ import { ChatsPage } from "./pages/ChatsPage";
 import { CreateAdvertPage } from "./pages/CreateAdvertPage";
 import { FavoritesPage } from "./pages/FavoritesPage";
 import { FeedPage } from "./pages/FeedPage";
+import { MyAdvertsPage } from "./pages/MyAdvertsPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import type { User } from "./types/domain";
 
-const protectedPages = new Set(["create", "favorites", "chats", "chat"]);
+const protectedPages = new Set(["create", "favorites", "chats", "chat", "mine"]);
 
 export default function App() {
   const [page, setPage] = useState("feed");
@@ -60,7 +61,15 @@ export default function App() {
           onChat={openChat}
         />
       );
-    if (page === "create") return <CreateAdvertPage onCreated={openAdvert} />;
+    if (page === "create")
+      return <CreateAdvertPage onSaved={(advert) => openAdvert(advert.id)} />;
+    if (page === "mine")
+      return (
+        <MyAdvertsPage
+          onCreate={() => setPage("create")}
+          onOpenAdvert={openAdvert}
+        />
+      );
     if (page === "favorites")
       return <FavoritesPage onOpenAdvert={openAdvert} />;
     if (page === "chats") return <ChatsPage onOpenChat={openChat} />;

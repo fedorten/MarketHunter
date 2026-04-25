@@ -38,6 +38,7 @@ export function ProfilePage({ user, onNavigate, onLogout }: Props) {
         <button onClick={() => onNavigate("create")}>
           Разместить объявление
         </button>
+        <button onClick={() => onNavigate("mine")}>Мои объявления</button>
         <button onClick={() => onNavigate("favorites")}>Избранное</button>
         <button onClick={() => onNavigate("chats")}>Сообщения</button>
       </div>

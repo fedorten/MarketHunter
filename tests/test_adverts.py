@@ -1,7 +1,3 @@
-import pytest
-from fastapi.testclient import TestClient
-
-
 class TestCreateAdvert:
     def test_create_advert(self, client, auth_headers, test_user):
         response = client.post(
@@ -47,6 +43,12 @@ class TestGetAdverts:
     def test_get_nonexistent_advert(self, client):
         response = client.get("/api/v1/adverts/99999")
         assert response.status_code == 404
+
+    def test_get_my_adverts(self, client, auth_headers, test_advert, test_advert2):
+        response = client.get("/api/v1/adverts/mine", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert [advert["id"] for advert in data] == [test_advert.id]
 
 
 class TestPatchAdvert:

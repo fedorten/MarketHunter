@@ -19,10 +19,27 @@ export function getAdvert(id: number) {
   return api<Advert>(`/api/v1/adverts/${id}`);
 }
 
+export function getMyAdverts() {
+  return api<Advert[]>("/api/v1/adverts/mine");
+}
+
 export function createAdvert(payload: Partial<Advert>) {
   return api<Advert>("/api/v1/adverts/", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export function updateAdvert(id: number, payload: Partial<Advert>) {
+  return api<Advert>(`/api/v1/adverts/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteAdvert(id: number) {
+  return api<Advert>(`/api/v1/adverts/${id}`, {
+    method: "DELETE",
   });
 }
 

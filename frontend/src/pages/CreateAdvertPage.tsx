@@ -1,53 +1,71 @@
 import { ImagePlus } from "lucide-react";
 import { FormEvent, useState } from "react";
-import { createAdvert, uploadImage } from "../api/adverts";
+import { createAdvert, updateAdvert, uploadImage } from "../api/adverts";
 import type { Advert } from "../types/domain";
 
 type Props = {
-  onCreated: (id: number) => void;
+  initialAdvert?: Advert;
+  onCancel?: () => void;
+  onSaved: (advert: Advert) => void;
 };
 
-export function CreateAdvertPage({ onCreated }: Props) {
+export function CreateAdvertPage({ initialAdvert, onCancel, onSaved }: Props) {
   const [form, setForm] = useState({
-    title: "",
-    price: "",
-    description: "",
-    category: "",
-    location: "",
+    title: initialAdvert?.title ?? "",
+    price: initialAdvert?.price ? String(initialAdvert.price) : "",
+    description: initialAdvert?.description ?? "",
+    category: initialAdvert?.category ?? "",
+    location: initialAdvert?.location ?? "",
   });
-  const [images, setImages] = useState<string[]>([]);
+  const [images, setImages] = useState<string[]>(initialAdvert?.images_paths ?? []);
   const [status, setStatus] = useState("");
+  const [error, setError] = useState("");
 
   const set = (key: keyof typeof form, value: string) =>
     setForm({ ...form, [key]: value });
 
   const onFile = async (file?: File) => {
     if (!file) return;
-    setStatus("Загружаем фото...");
-    const result = await uploadImage(file);
-    setImages((current) => [...current, result.url]);
-    setStatus("");
+    try {
+      setError("");
+      setStatus("Загружаем фото...");
+      const result = await uploadImage(file);
+      setImages((current) => [...current, result.url]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось загрузить фото");
+    } finally {
+      setStatus("");
+    }
   };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    setStatus("Публикуем...");
-    const payload: Partial<Advert> = {
-      title: form.title,
-      price: Number(form.price),
-      description: form.description,
-      category: form.category,
-      location: form.location,
-      images_paths: images,
-    };
-    const created = await createAdvert(payload);
-    onCreated(created.id);
+    try {
+      setError("");
+      setStatus(initialAdvert ? "Сохраняем..." : "Публикуем...");
+      const payload: Partial<Advert> = {
+        title: form.title.trim(),
+        price: Number(form.price),
+        description: form.description.trim() || null,
+        category: form.category.trim() || null,
+        location: form.location.trim() || null,
+        images_paths: images,
+      };
+      const saved = initialAdvert
+        ? await updateAdvert(initialAdvert.id, payload)
+        : await createAdvert(payload);
+      onSaved(saved);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось сохранить объявление");
+    } finally {
+      setStatus("");
+    }
   };
 
   return (
     <section className="form-layout">
       <div>
-        <h1>Новое объявление</h1>
+        <h1>{initialAdvert ? "Редактировать объявление" : "Новое объявление"}</h1>
         <p>
           Короткий заголовок, честная цена и одно хорошее фото работают лучше
           длинного текста.
@@ -97,9 +115,17 @@ export function CreateAdvertPage({ onCreated }: Props) {
             onChange={(event) => onFile(event.target.files?.[0])}
           />
         </label>
-        <button className="primary-button" disabled={Boolean(status)}>
-          {status || "Опубликовать"}
-        </button>
+        {error && <p className="error-text">{error}</p>}
+        <div className="action-row">
+          <button className="primary-button" disabled={Boolean(status)}>
+            {status || (initialAdvert ? "Сохранить" : "Опубликовать")}
+          </button>
+          {onCancel && (
+            <button type="button" className="secondary-button" onClick={onCancel}>
+              Отмена
+            </button>
+          )}
+        </div>
       </form>
     </section>
   );

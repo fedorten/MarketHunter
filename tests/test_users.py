@@ -1,7 +1,3 @@
-import pytest
-from fastapi.testclient import TestClient
-
-
 class TestGetCurrentUser:
     def test_get_me(self, client, auth_headers, test_user):
         response = client.get("/api/v1/users/me", headers=auth_headers)

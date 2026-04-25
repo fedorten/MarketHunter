@@ -39,7 +39,7 @@ class TokenData(BaseModel):
 
 # ----------------- Password utils -----------------
 def get_password_hash(password: str) -> str:
-    if os.getenv("PYTEST_CURRENT_TEST"):
+    if os.getenv("TESTING") or os.getenv("PYTEST_CURRENT_TEST"):
         digest = hashlib.sha256(password.encode("utf-8")).hexdigest()
         return f"test-sha256${digest}"
     return password_hash.hash(password)
@@ -148,10 +148,15 @@ async def login_for_access_token(
         username = str(payload.get("username") or payload.get("phone") or "")
         password = str(payload.get("password") or "")
     else:
-        body = (await request.body()).decode("utf-8")
-        payload = parse_qs(body)
-        username = payload.get("username", [""])[0]
-        password = payload.get("password", [""])[0]
+        form = await request.form()
+        if form:
+            username = str(form.get("username") or "")
+            password = str(form.get("password") or "")
+        else:
+            body = (await request.body()).decode("utf-8")
+            payload = parse_qs(body)
+            username = payload.get("username", [""])[0]
+            password = payload.get("password", [""])[0]
 
     # username фактически phone
     user = authenticate_user(session, phone=username.strip(), password=password)

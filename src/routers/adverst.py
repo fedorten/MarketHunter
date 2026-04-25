@@ -114,8 +114,10 @@ async def read_my_adverts(
     session: SessionDep,
     current_user: User = Depends(get_current_user),
 ):
-    stmt = select(Advert).where(Advert.owner_id == current_user.id).order_by(
-        desc(Advert.create_date)
+    stmt = (
+        select(Advert)
+        .where(Advert.owner_id == current_user.id)
+        .order_by(desc(Advert.create_date))
     )
     return session.exec(stmt).all()
 

@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL ?? "";
+export const API_URL = import.meta.env.VITE_API_URL ?? "";
 const TOKEN_KEY = "krug_token";
 
 export function getToken() {
@@ -19,12 +19,17 @@ export function mediaUrl(path?: string | null) {
   return `${API_URL}${path}`;
 }
 
+export function websocketUrl(path: string) {
+  const base =
+    API_URL ||
+    `${location.protocol === "https:" ? "https" : "http"}://${location.host}`;
+  const url = new URL(path, base);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  return url.toString();
+}
+
 function getErrorMessage(payload: unknown) {
-  if (
-    payload &&
-    typeof payload === "object" &&
-    "detail" in payload
-  ) {
+  if (payload && typeof payload === "object" && "detail" in payload) {
     const detail = (payload as { detail?: unknown }).detail;
     if (typeof detail === "string") return detail;
     if (Array.isArray(detail)) {
